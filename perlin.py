@@ -2,9 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import random
 
-width, height = 190, 100
+width, height = 1920, 1080
 
-cell_width = 10
+cell_width = 500
 
 # Define 2-dimensional grid where each grid intersection has
 # an associated 2D unit-length gradient vector
@@ -49,8 +49,12 @@ for x in range(width):
         # Calculate dot products between gradient vectors and offset vectors
         dot_products = np.einsum('ij,ij->i', corner_g_vecs, offset_vecs)
         
-        u = smoothstep(0)
-        v = smoothstep(0)        
+        # Normalize x and y to the cell size
+        local_x = (x % cell_width) / cell_width
+        local_y = (y % cell_width) / cell_width
+        
+        u = smoothstep(local_x)
+        v = smoothstep(local_y)
 
         # Interpolate between dot products and interpolate between these to generate noise
         lerp1 = lerp(dot_products[0], dot_products[1], u)
