@@ -73,8 +73,6 @@ def show_random_noise():
     for x in range(pixel_grid.shape[0]):
         for y in range(pixel_grid.shape[1]):
             pixel_grid[x, y] = noise(x, y)
-    print(pixel_grid)
-    print(f"min: {pixel_grid.min()}, max: {pixel_grid.max()}")
 
     cmaps = ['Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2', 'Set1', 'Set2', 'Set3', 'tab10', 'tab20', 'tab20b', 'tab20c', 'twilight', 'twilight_shifted', 'hsv', 'PiYG', 'PRGn', 'BrBG', 'PuOr', 'RdGy', 'RdBu', 'RdYlBu', 'RdYlGn', 'Spectral', 'coolwarm', 'bwr', 'seismic', 'viridis', 'plasma', 'inferno', 'magma', 'cividis']
 

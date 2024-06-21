@@ -6,6 +6,15 @@ from numba import cuda, float32
 width, height = 1920, 1080
 cell_width = 250
 
+# Define threads per block and number of blocks
+threads_per_block = (16, 16)
+blocks_per_grid_x = int(np.ceil(width / threads_per_block[0]))
+blocks_per_grid_y = int(np.ceil(height / threads_per_block[1]))
+blocks_per_grid = (blocks_per_grid_x, blocks_per_grid_y)
+
+# TODO: Maintain gvecs to redraw later
+g_vecs = {}
+
 # Define 2-dimensional grid where each grid intersection has an associated 2D unit-length gradient vector
 def generate_gradient_vectors(width, height, cell_width):
     g_vecs = np.zeros((width // cell_width + 1, height // cell_width + 1, 2), dtype=np.float32)
@@ -29,9 +38,11 @@ def lerp(a, b, t):
     return a + t * (b - a)
 
 @cuda.jit
-def generate_noise(pixel_grid, g_vecs, width, height, cell_width):
+def generate_noise(pixel_grid, g_vecs, width, height, cell_width, offset_x, offset_y):
     x, y = cuda.grid(2)
-    if x < width and y < height:
+    if x < width + offset_x and y < height + offset_y:
+        x += offset_x
+        y += offset_y
         # Identify 4 corners of the cell and their gradient vectors
         cell_x = x // cell_width
         cell_y = y // cell_width
@@ -65,39 +76,47 @@ def generate_noise(pixel_grid, g_vecs, width, height, cell_width):
         pixel_grid[y, x] = noise
 
 
-def show_random_noise():
-    g_vecs = generate_gradient_vectors(width, height, cell_width)
 
-    # Prepare data for GPU
-    pixel_grid_device = cuda.device_array((height, width), dtype=np.float32)
-    g_vecs_device = cuda.to_device(g_vecs)
+g_vecs = generate_gradient_vectors(width, height, cell_width)
 
-    # Define threads per block and number of blocks
-    threads_per_block = (16, 16)
-    blocks_per_grid_x = int(np.ceil(width / threads_per_block[0]))
-    blocks_per_grid_y = int(np.ceil(height / threads_per_block[1]))
-    blocks_per_grid = (blocks_per_grid_x, blocks_per_grid_y)
+# Prepare data for GPU
+pixel_grid_device = cuda.device_array((height, width), dtype=np.float32)
+g_vecs_device = cuda.to_device(g_vecs)
 
-    # Generate noise on GPU
-    generate_noise[blocks_per_grid, threads_per_block](pixel_grid_device, g_vecs_device, width, height, cell_width)
+# Generate noise on GPU
+generate_noise[blocks_per_grid, threads_per_block](pixel_grid_device, g_vecs_device, width, height, cell_width, 0, 0)
 
-    # Copy the result back to host
-    pixel_grid = pixel_grid_device.copy_to_host()
+# Copy the result back to host
+pixel_grid = pixel_grid_device.copy_to_host()
 
-    pixel_grid_norm = (pixel_grid - pixel_grid.min()) / (pixel_grid.max() - pixel_grid.min())
+print(f"Pixel grid min: {pixel_grid.min()}, max: {pixel_grid.max()}")
 
+pixel_grid_norm = (pixel_grid - pixel_grid.min()) / (pixel_grid.max() - pixel_grid.min())
 
-    cmaps = ['Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2', 'Set1', 'Set2', 'Set3', 'tab10', 'tab20', 'tab20b', 'tab20c', 'twilight', 'twilight_shifted', 'hsv', 'PiYG', 'RdYlBu', 'RdYlGn', 'Spectral', 'coolwarm', 'viridis', 'plasma', 'inferno', 'cividis']
+cmaps = ['Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2', 'Set1', 'Set2', 'Set3', 'tab10', 'tab20', 'tab20b', 'tab20c', 'twilight', 'twilight_shifted', 'hsv', 'PiYG', 'RdYlBu', 'RdYlGn', 'Spectral', 'coolwarm', 'viridis', 'plasma', 'inferno', 'cividis']
 
-    # for cmap in cmaps:
-    fig, ax = plt.subplots()
-    inches_scale = 100
-    fig.set_size_inches(width / inches_scale, height / inches_scale)
-    mat = ax.matshow(pixel_grid, cmap=random.choice(cmaps))
-    ax.axis("off")
-    plt.show()
-    plt.close()
+fig, ax = plt.subplots()
+inches_scale = 100
+fig.set_size_inches(width / inches_scale, height / inches_scale)
+mat = ax.matshow(pixel_grid, cmap='Pastel1')
+ax.axis("off")
+plt.show()
 
 
-for _ in range(10):
-    show_random_noise()
+# Prepare data for GPU
+pixel_grid_device = cuda.device_array((height, width), dtype=np.float32)
+g_vecs_device = cuda.to_device(g_vecs)
+
+# Generate noise on GPU
+generate_noise[blocks_per_grid, threads_per_block](pixel_grid_device, g_vecs_device, width, height, cell_width, -500, 0)
+
+# Copy the result back to host
+pixel_grid = pixel_grid_device.copy_to_host()
+fig, ax = plt.subplots()
+inches_scale = 100
+fig.set_size_inches(width / inches_scale, height / inches_scale)
+mat = ax.matshow(pixel_grid, cmap='Pastel1')
+ax.axis("off")
+plt.show()
+plt.close()
+
