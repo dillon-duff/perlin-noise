@@ -16,11 +16,13 @@ def generate_gradient_vectors(width, height, cell_width):
             g_vecs[i, j, 1] = np.sin(theta)
     return g_vecs
 
-g_vecs = generate_gradient_vectors(width, height, cell_width)
-
 @cuda.jit(device=True)
 def smoothstep(t):
     return t * t * t * (t * (t * 6 - 15) + 10)
+
+@cuda.jit(device=True)
+def cubic_hermite(t):
+    return t * t * (3 - 2 * t)
 
 @cuda.jit(device=True)
 def lerp(a, b, t):
@@ -63,29 +65,39 @@ def generate_noise(pixel_grid, g_vecs, width, height, cell_width):
         pixel_grid[y, x] = noise
 
 
-# Prepare data for GPU
-pixel_grid_device = cuda.device_array((height, width), dtype=np.float32)
-g_vecs_device = cuda.to_device(g_vecs)
+def show_random_noise():
+    g_vecs = generate_gradient_vectors(width, height, cell_width)
 
-# Define threads per block and number of blocks
-threads_per_block = (16, 16)
-blocks_per_grid_x = int(np.ceil(width / threads_per_block[0]))
-blocks_per_grid_y = int(np.ceil(height / threads_per_block[1]))
-blocks_per_grid = (blocks_per_grid_x, blocks_per_grid_y)
+    # Prepare data for GPU
+    pixel_grid_device = cuda.device_array((height, width), dtype=np.float32)
+    g_vecs_device = cuda.to_device(g_vecs)
 
-# Generate noise on GPU
-generate_noise[blocks_per_grid, threads_per_block](pixel_grid_device, g_vecs_device, width, height, cell_width)
+    # Define threads per block and number of blocks
+    threads_per_block = (16, 16)
+    blocks_per_grid_x = int(np.ceil(width / threads_per_block[0]))
+    blocks_per_grid_y = int(np.ceil(height / threads_per_block[1]))
+    blocks_per_grid = (blocks_per_grid_x, blocks_per_grid_y)
 
-# Copy the result back to host
-pixel_grid = pixel_grid_device.copy_to_host()
+    # Generate noise on GPU
+    generate_noise[blocks_per_grid, threads_per_block](pixel_grid_device, g_vecs_device, width, height, cell_width)
 
-cmaps = ['Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2', 'Set1', 'Set2', 'Set3', 'tab10', 'tab20', 'tab20b', 'tab20c', 'twilight', 'twilight_shifted', 'hsv', 'PiYG', 'RdYlBu', 'RdYlGn', 'Spectral', 'coolwarm', 'viridis', 'plasma', 'inferno', 'cividis']
+    # Copy the result back to host
+    pixel_grid = pixel_grid_device.copy_to_host()
 
-for cmap in cmaps:
+    pixel_grid_norm = (pixel_grid - pixel_grid.min()) / (pixel_grid.max() - pixel_grid.min())
+
+
+    cmaps = ['Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2', 'Set1', 'Set2', 'Set3', 'tab10', 'tab20', 'tab20b', 'tab20c', 'twilight', 'twilight_shifted', 'hsv', 'PiYG', 'RdYlBu', 'RdYlGn', 'Spectral', 'coolwarm', 'viridis', 'plasma', 'inferno', 'cividis']
+
+    # for cmap in cmaps:
     fig, ax = plt.subplots()
     inches_scale = 100
     fig.set_size_inches(width / inches_scale, height / inches_scale)
-    mat = ax.matshow(pixel_grid, cmap=cmap)
+    mat = ax.matshow(pixel_grid, cmap=random.choice(cmaps))
     ax.axis("off")
     plt.show()
     plt.close()
+
+
+for _ in range(10):
+    show_random_noise()
