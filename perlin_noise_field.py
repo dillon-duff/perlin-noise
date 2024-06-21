@@ -5,11 +5,11 @@ import pygame as pg
 
 from perlin_noise import PerlinNoise
 
-noise = PerlinNoise()
+noise = PerlinNoise(octaves=1)
 
 width, height = 960, 540
 
-cell_width = 25
+cell_width = height
 
 arrow_grid = {}
 
@@ -65,15 +65,34 @@ def draw_arrow(screen, color, start_pos, length, angle):
     pygame.draw.line(screen, color, end_pos, left_arrowhead, 3)
     pygame.draw.line(screen, color, end_pos, right_arrowhead, 3)
 
+clock = pg.time.Clock()
+current_frame = 1
+octaves = 0
 
 while running:
     for event in pg.event.get():
         if event.type == pg.QUIT:
             running = False
-    display.fill(pg.Color(0,0,0))
+    display.fill(pg.Color(255,255,255))
+
+    if cell_width < 150:
+        if current_frame % 3 == 0:
+            cell_width -= 1
+    else:
+        cell_width -= 1
+    print(cell_width)
+    if cell_width < 10:
+        running = False
+
+    arrow_grid = {}
+    for x in range(0, width + cell_width, cell_width):
+        for y in range(0, height + cell_width, cell_width):
+            arrow_grid[(x, y)] = noise([x / height, y / width]) * 2 * np.pi
 
     for (x,y), radians in arrow_grid.items():
-        draw_arrow(display, pg.Color(255,255,255), (x,y), cell_width/2,radians) 
-
+        draw_arrow(display, pg.Color(0,0,0), (x,y), cell_width/2,radians) 
+    
+    current_frame += 1
+    clock.tick(30)
     pg.display.flip()
 
