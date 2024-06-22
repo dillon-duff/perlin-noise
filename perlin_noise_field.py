@@ -7,9 +7,9 @@ from perlin_noise import PerlinNoise
 
 noise = PerlinNoise(octaves=1)
 
-width, height = 960, 540
+width, height = 1920, 1080
 
-cell_width = height
+cell_width = 40
 
 arrow_grid = {}
 
@@ -17,14 +17,12 @@ for x in range(0, width + cell_width, cell_width):
     for y in range(0, height + cell_width, cell_width):
         arrow_grid[(x, y)] = noise([x / height, y / width]) * 2 * np.pi
 
-
-display = pg.display.set_mode((width, height))
+screen = pg.display.set_mode((width, height))
 
 pg.init()
 
 running = True
 
-import pygame
 import math
 
 def draw_arrow(screen, color, start_pos, length, angle):
@@ -45,7 +43,7 @@ def draw_arrow(screen, color, start_pos, length, angle):
     )
     
     # Draw the main line of the arrow
-    pygame.draw.line(screen, color, start_pos, end_pos, 3)
+    pg.draw.line(screen, color, start_pos, end_pos, 3)
     
     # Calculate the two points of the arrowhead
     arrowhead_length = length * 0.2
@@ -62,37 +60,53 @@ def draw_arrow(screen, color, start_pos, length, angle):
     )
     
     # Draw the arrowhead
-    pygame.draw.line(screen, color, end_pos, left_arrowhead, 3)
-    pygame.draw.line(screen, color, end_pos, right_arrowhead, 3)
+    pg.draw.line(screen, color, end_pos, left_arrowhead, 3)
+    pg.draw.line(screen, color, end_pos, right_arrowhead, 3)
 
 clock = pg.time.Clock()
 current_frame = 1
 octaves = 0
 
+
+
+def get_closest_arrow(point):
+    x, y = point
+    arrow_x = max(0, min(round(x / cell_width) * cell_width, width))
+    arrow_y = max(0, min(round(y / cell_width) * cell_width, height))
+    return arrow_grid[(arrow_x, arrow_y)]
+
+def move_point_according_to_arrow(point, arrow):
+    x_component = np.cos(arrow)
+    y_component = np.sin(arrow)
+    return (point[0] + x_component, point[1] + y_component)
+
+def connect_points(p1, p2, color="blue", width=4):
+    pg.draw.line(screen, pg.Color(204, 204, 255), p1, p2, width)
+
+num_points = 100
+points = [
+        (random.randrange(width), random.randrange(height))
+        for _ in range(num_points)
+        ]
+
+screen.fill("black")
+
+#for (x,y), radians in arrow_grid.items():
+#    draw_arrow(screen, "white", (x,y), cell_width/2,radians) 
 while running:
     for event in pg.event.get():
         if event.type == pg.QUIT:
             running = False
-    display.fill(pg.Color(255,255,255))
 
-    if cell_width < 150:
-        if current_frame % 3 == 0:
-            cell_width -= 1
-    else:
-        cell_width -= 1
-    print(cell_width)
-    if cell_width < 10:
-        running = False
+    for i, point in enumerate(points):
+        closest_arrow = get_closest_arrow(point)
+        next_point = move_point_according_to_arrow(point, closest_arrow)
+        connect_points(point, next_point)
+        points[i] = next_point
 
-    arrow_grid = {}
-    for x in range(0, width + cell_width, cell_width):
-        for y in range(0, height + cell_width, cell_width):
-            arrow_grid[(x, y)] = noise([x / height, y / width]) * 2 * np.pi
-
-    for (x,y), radians in arrow_grid.items():
-        draw_arrow(display, pg.Color(0,0,0), (x,y), cell_width/2,radians) 
-    
+   
     current_frame += 1
-    clock.tick(30)
+    clock.tick(60)
     pg.display.flip()
+
 
