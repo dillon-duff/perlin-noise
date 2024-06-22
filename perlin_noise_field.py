@@ -5,13 +5,16 @@ import pygame as pg
 
 from perlin_noise import PerlinNoise
 
-noise = PerlinNoise(octaves=1)
+noise = PerlinNoise(octaves=2)
 
 width, height = 1920, 1080
 
 cell_width = 40
 
 arrow_grid = {}
+
+line_colors = [(207, 152, 18), (204, 204, 255), (219, 119, 141)]
+bg_color = (255,253,208)
 
 for x in range(0, width + cell_width, cell_width):
     for y in range(0, height + cell_width, cell_width):
@@ -81,15 +84,15 @@ def move_point_according_to_arrow(point, arrow):
     return (point[0] + x_component, point[1] + y_component)
 
 def connect_points(p1, p2, color="blue", width=4):
-    pg.draw.line(screen, pg.Color(204, 204, 255), p1, p2, width)
+    pg.draw.line(screen, pg.Color(*random.choice(line_colors)), p1, p2, width)
 
-num_points = 100
+num_points = 1000
 points = [
         (random.randrange(width), random.randrange(height))
         for _ in range(num_points)
         ]
 
-screen.fill("black")
+screen.fill(bg_color)
 
 #for (x,y), radians in arrow_grid.items():
 #    draw_arrow(screen, "white", (x,y), cell_width/2,radians) 
